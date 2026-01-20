@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Memorice</title>
+
+<style>
+body {
+  margin: 0;
+  padding: 20px;
+  background: #111;
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  text-align: center;
+}
+
+h1 {
+  margin: 10px 0 20px;
+}
+
+button {
+  padding: 14px 22px;
+  font-size: 18px;
+  border: none;
+  border-radius: 12px;
+  background: #ffcc00;
+  color: #000;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+
+.game-board {
+  max-width: 600px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+}
+
+.card {
+  aspect-ratio: 1 / 1;
+  perspective: 1000px;
+}
+
+.card-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transition: transform 0.4s;
+  transform-style: preserve-3d;
+}
+
+.card.flipped .card-inner {
+  transform: rotateY(180deg);
+}
+
+.card-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  backface-visibility: hidden;
+  overflow: hidden;
+}
+
+.card-front {
+  background: #222;
+}
+
+.card-back {
+  transform: rotateY(180deg);
+}
+
+.card-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🧠 Memorice</h1>
+<button id="shuffleBtn">🔀 Revolver cartas</button>
+
+<div class="game-board" id="gameBoard"></div>
+
+<script>
+// ==============================
+// CONFIGURACIÓN FÁCIL
+// ==============================
+
+const CARD_BACK = "card-back.png";
+
+const IMAGES = [
+  "img1.png",
+  "img2.png",
+  "img3.png",
+  "img4.png",
+  "img5.png",
+  "img6.png"
+];
+
+// Sonidos
+const SOUND_FLIP    = new Audio("flip.mp3");
+const SOUND_MATCH   = new Audio("match.mp3");
+const SOUND_FAIL    = new Audio("fail.mp3");
+const SOUND_SHUFFLE = new Audio("shuffle.mp3");
+
+// Evita delay en iOS
+[SOUND_FLIP, SOUND_MATCH, SOUND_FAIL, SOUND_SHUFFLE].forEach(s => {
+  s.preload = "auto";
+});
+
+// ==============================
+// LÓGICA DEL JUEGO
+// ==============================
+
+const board = document.getElementById("gameBoard");
+const shuffleBtn = document.getElementById("shuffleBtn");
+
+let firstCard = null;
+let secondCard = null;
+let lockBoard = false;
+
+function shuffle(array) {
+  return array.sort(() => Math.random() - 0.5);
+}
+
+function playSound(sound) {
+  sound.currentTime = 0;
+  sound.play();
+}
+
+function createBoard() {
+  playSound(SOUND_SHUFFLE);
+
+  board.innerHTML = "";
+  firstCard = null;
+  secondCard = null;
+  lockBoard = false;
+
+  const cards = shuffle([...IMAGES, ...IMAGES]);
+
+  cards.forEach(image => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.dataset.image = image;
+
+    card.innerHTML = `
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <img src="${CARD_BACK}">
+        </div>
+        <div class="card-face card-back">
+          <img src="${image}">
+        </div>
+      </div>
+    `;
+
+    card.addEventListener("click", () => flipCard(card));
+    board.appendChild(card);
+  });
+}
+
+function flipCard(card) {
+  if (lockBoard) return;
+  if (card === firstCard) return;
+  if (card.classList.contains("matched")) return;
+
+  playSound(SOUND_FLIP);
+  card.classList.add("flipped");
+
+  if (!firstCard) {
+    firstCard = card;
+    return;
+  }
+
+  secondCard = card;
+  checkMatch();
+}
+
+function checkMatch() {
+  const isMatch = firstCard.dataset.image === secondCard.dataset.image;
+
+  if (isMatch) {
+    playSound(SOUND_MATCH);
+    firstCard.classList.add("matched");
+    secondCard.classList.add("matched");
+    resetTurn();
+  } else {
+    playSound(SOUND_FAIL);
+    lockBoard = true;
+    setTimeout(() => {
+      firstCard.classList.remove("flipped");
+      secondCard.classList.remove("flipped");
+      resetTurn();
+    }, 800);
+  }
+}
+
+function resetTurn() {
+  [firstCard, secondCard, lockBoard] = [null, null, false];
+}
+
+shuffleBtn.addEventListener("click", createBoard);
+
+// Arranque
+createBoard();
+</script>
+
+</body>
+</html>
